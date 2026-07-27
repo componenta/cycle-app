@@ -46,7 +46,7 @@ final class CreateCommand extends Command
             return Command::FAILURE;
         }
 
-        $timestamp = date('YmdHis');
+        $timestamp = date('Ymd.His');
         $className = $name;
         $fileName = sprintf('%s_%s.php', $timestamp, $this->toSnakeCase($name));
         $filePath = rtrim($this->config->getDirectory(), '/') . '/' . $fileName;
