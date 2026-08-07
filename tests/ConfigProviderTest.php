@@ -42,5 +42,5 @@ it('registers Cycle database console commands', function (): void {
     ];
 
     expect($config[ConsoleConfigKey::COMMANDS])->toBe($commands)
-        ->and($config[DependencyConfigKey::DEPENDENCIES][DependencyConfigKey::AUTOWIRES])->toBe($commands);
+        ->and($config[DependencyConfigKey::DEPENDENCIES])->not->toHaveKey(DependencyConfigKey::AUTOWIRES);
 });

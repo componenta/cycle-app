@@ -31,19 +31,6 @@ final class ConfigProvider extends BaseConfigProvider
         ];
     }
 
-    protected function getAutowires(): array
-    {
-        return [
-            CreateCommand::class,
-            GenerateCommand::class,
-            GenerateSchemaCommand::class,
-            MigrateCommand::class,
-            RollbackCommand::class,
-            StatusCommand::class,
-            SyncCommand::class,
-        ];
-    }
-
     protected function getAliases(): array
     {
         return [
