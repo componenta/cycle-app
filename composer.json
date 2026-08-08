@@ -7,7 +7,7 @@
         "php": "^8.4",
         "componenta/app-console": "^1.0",
         "componenta/class-finder": "^1.0",
-        "componenta/config": "^1.0",
+        "componenta/config": "^2.0",
         "componenta/cycle": "^1.0",
         "componenta/tokenizer": "^1.0",
         "cycle/annotated": "^4.4",
