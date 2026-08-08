@@ -5,10 +5,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "componenta/app-console": "^2.0@dev",
+        "componenta/app-console": "^2.0",
         "componenta/class-finder": "^1.0",
         "componenta/config": "^1.0",
-        "componenta/cycle": "^2.0@dev",
+        "componenta/cycle": "^2.0",
         "componenta/tokenizer": "^1.0",
         "cycle/annotated": "^4.4",
         "cycle/database": "^2.11",
@@ -32,7 +32,7 @@
     "require-dev": {
         "pestphp/pest": "^4.0"
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "extra": {
         "componenta": {
             "config-providers": [
