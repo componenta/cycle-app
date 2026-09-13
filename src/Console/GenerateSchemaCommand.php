@@ -6,11 +6,15 @@ namespace Componenta\Cycle\App\Console;
 
 use Componenta\Cycle\App\Locator\EmbeddingLocator;
 use Componenta\Cycle\App\Locator\EntityLocator;
+use Componenta\Cycle\ConfigKey;
 use Componenta\Cycle\Mapper\LazyGhostMapper;
+use Componenta\VarExport\VarExport;
 use Cycle\Annotated;
 use Cycle\Database\DatabaseProviderInterface;
 use Cycle\ORM\SchemaInterface;
 use Cycle\Schema;
+use ErrorException;
+use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -100,135 +104,49 @@ final class GenerateSchemaCommand extends Command
 
     private function writeSchema(array $schema, string $path): void
     {
-        $dir = dirname($path);
-
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $content = "<?php\n\n";
-        $content .= "declare(strict_types=1);\n\n";
-        $content .= "/**\n";
-        $content .= " * Auto-generated Cycle ORM schema.\n";
+        $expression = VarExport::withDefaults()->export([
+            ConfigKey::ROOT => [ConfigKey::SCHEMA => $schema],
+        ]);
+        $content = "<?php\n\ndeclare(strict_types=1);\n\n";
+        $content .= "/**\n * Auto-generated Cycle ORM schema.\n";
         $content .= " * Generated at: " . date('Y-m-d H:i:s') . "\n";
-        $content .= " *\n";
-        $content .= " * Do not edit manually. Run `php console db:schema` to regenerate.\n";
-        $content .= " */\n\n";
-        $content .= "use Componenta\\Cycle\\ConfigKey;\n";
-        $content .= "use Cycle\\ORM\\SchemaInterface;\n\n";
-        $content .= "return [\n";
-        $content .= "    ConfigKey::ROOT => [\n";
-        $content .= "        ConfigKey::SCHEMA => " . $this->exportSchema($schema, 2) . ",\n";
-        $content .= "    ],\n";
-        $content .= "];\n";
+        $content .= " */\n\nreturn " . $expression . ";\n";
 
-        file_put_contents($path, $content);
-    }
-
-    private function exportSchema(array $schema, int $indent = 0): string
-    {
-        $pad = str_repeat('    ', $indent);
-        $lines = ["["];
-
-        foreach ($schema as $role => $definition) {
-            $lines[] = $pad . "    " . $this->exportValue($role) . " => [";
-
-            foreach ($definition as $key => $value) {
-                $keyName = $this->schemaKeyToConstant($key);
-                $lines[] = $pad . "        {$keyName} => " . $this->exportValue($value, $indent + 2) . ",";
+        $directory = dirname($path);
+        $temporary = null;
+        $stream = null;
+        set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
+            throw new ErrorException($message, 0, $severity, $file, $line);
+        });
+        try {
+            if (!is_dir($directory) && !mkdir($directory, 0o755, true) && !is_dir($directory)) {
+                throw new RuntimeException('Cannot create schema directory "' . $directory . '".');
             }
-
-            $lines[] = $pad . "    ],";
-        }
-
-        $lines[] = $pad . "]";
-
-        return implode("\n", $lines);
-    }
-
-    private function exportValue(mixed $value, int $indent = 0): string
-    {
-        if ($value === null) {
-            return 'null';
-        }
-
-        if (is_bool($value)) {
-            return $value ? 'true' : 'false';
-        }
-
-        if (is_int($value) || is_float($value)) {
-            return (string) $value;
-        }
-
-        if (is_string($value)) {
-            return "'" . addslashes($value) . "'";
-        }
-
-        if (is_array($value)) {
-            if ($value === []) {
-                return '[]';
+            $temporary = $directory . '/.' . basename($path) . '.' . bin2hex(random_bytes(12)) . '.tmp';
+            $stream = fopen($temporary, 'xb');
+            if ($stream === false || fwrite($stream, $content) !== strlen($content) || !fflush($stream)) {
+                throw new RuntimeException('Cannot write complete schema "' . $path . '".');
             }
-
-            $pad = str_repeat('    ', $indent);
-            $isAssoc = array_keys($value) !== range(0, count($value) - 1);
-
-            if (!$isAssoc && $this->isSimpleArray($value)) {
-                $items = array_map(fn($v) => $this->exportValue($v), $value);
-                return '[' . implode(', ', $items) . ']';
+            fclose($stream);
+            $stream = null;
+            if (!rename($temporary, $path)) {
+                throw new RuntimeException('Cannot publish schema "' . $path . '".');
             }
-
-            $lines = ["["];
-            foreach ($value as $k => $v) {
-                $exported = $this->exportValue($v, $indent + 1);
-                if ($isAssoc) {
-                    $lines[] = $pad . "    " . $this->exportValue($k) . " => {$exported},";
-                } else {
-                    $lines[] = $pad . "    {$exported},";
+            $temporary = null;
+            if (function_exists('opcache_invalidate')) {
+                opcache_invalidate($path, true);
+            }
+        } finally {
+            try {
+                if (is_resource($stream)) {
+                    fclose($stream);
                 }
-            }
-            $lines[] = $pad . "]";
-
-            return implode("\n", $lines);
-        }
-
-        return var_export($value, true);
-    }
-
-    private function isSimpleArray(array $array): bool
-    {
-        if (count($array) > 5) {
-            return false;
-        }
-
-        foreach ($array as $value) {
-            if (!is_scalar($value) && $value !== null) {
-                return false;
+                if ($temporary !== null && is_file($temporary)) {
+                    unlink($temporary);
+                }
+            } finally {
+                restore_error_handler();
             }
         }
-
-        return true;
-    }
-
-    private function schemaKeyToConstant(int $key): string
-    {
-        return match ($key) {
-            SchemaInterface::ENTITY => 'SchemaInterface::ENTITY',
-            SchemaInterface::MAPPER => 'SchemaInterface::MAPPER',
-            SchemaInterface::SOURCE => 'SchemaInterface::SOURCE',
-            SchemaInterface::REPOSITORY => 'SchemaInterface::REPOSITORY',
-            SchemaInterface::DATABASE => 'SchemaInterface::DATABASE',
-            SchemaInterface::TABLE => 'SchemaInterface::TABLE',
-            SchemaInterface::PRIMARY_KEY => 'SchemaInterface::PRIMARY_KEY',
-            SchemaInterface::FIND_BY_KEYS => 'SchemaInterface::FIND_BY_KEYS',
-            SchemaInterface::COLUMNS => 'SchemaInterface::COLUMNS',
-            SchemaInterface::RELATIONS => 'SchemaInterface::RELATIONS',
-            SchemaInterface::CHILDREN => 'SchemaInterface::CHILDREN',
-            SchemaInterface::SCOPE => 'SchemaInterface::SCOPE',
-            SchemaInterface::TYPECAST => 'SchemaInterface::TYPECAST',
-            SchemaInterface::SCHEMA => 'SchemaInterface::SCHEMA',
-            SchemaInterface::TYPECAST_HANDLER => 'SchemaInterface::TYPECAST_HANDLER',
-            SchemaInterface::GENERATED_FIELDS => 'SchemaInterface::GENERATED_FIELDS',
-            default => (string) $key,
-        };
     }
 }
