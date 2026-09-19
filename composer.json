@@ -5,10 +5,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "componenta/app-console": "^4.0.0",
-        "componenta/class-finder": "^2.0.0",
+        "componenta/app-console": "^5.0.0",
+        "componenta/class-finder": "^2.1.0",
         "componenta/config": "^3.0.0",
-        "componenta/cycle": "^1.1.0",
+        "componenta/cycle": "^1.1.1",
         "componenta/tokenizer": "^1.0",
         "componenta/var-export": "^2.0.0",
         "cycle/annotated": "^4.4",
@@ -42,7 +42,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "1.1.x-dev"
+            "dev-main": "2.0.x-dev"
         }
     },
     "config": {
