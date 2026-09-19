@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Componenta\Cycle\App\Locator;
 
-use Componenta\ClassFinder\Attribute\DevOnly;
 use Componenta\ClassFinder\Attribute\ListenTo;
 use Componenta\ClassFinder\FinalizableListenerInterface;
 use Componenta\ClassFinder\FinalizationStateInterface;
@@ -14,7 +13,6 @@ use Cycle\Annotated\Locator\Entity;
 use Cycle\Annotated\Locator\EntityLocatorInterface;
 use ReflectionClass;
 
-#[DevOnly]
 #[ListenTo(EntityAttribute::class)]
 final class EntityLocator implements EntityLocatorInterface, FinalizableListenerInterface, FinalizationStateInterface
 {
