@@ -27,6 +27,12 @@ jobs:
           repository: componenta/app-console
           ref: refactor/app-runtime-contracts
           path: console-source
+      - uses: actions/checkout@v7
+        with:
+          repository: componenta/cycle
+          ref: da7f4dae5faca544c4899fd4762b53e6c79f48de
+          path: cycle-source
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -39,7 +45,11 @@ jobs:
       - run: >-
           composer config repositories.app-console
           '{"type":"path","url":"console-source","options":{"symlink":false,"versions":{"componenta/app-console":"6.0.0"}}}'
+      - run: >-
+          composer config repositories.cycle
+          '{"type":"path","url":"cycle-source","options":{"symlink":false,"versions":{"componenta/cycle":"2.0.0"}}}'
       - run: composer validate --strict
       - run: composer update --no-interaction --prefer-dist
       - run: composer show componenta/app
+      - run: composer show componenta/cycle
       - run: composer test
