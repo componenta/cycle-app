@@ -7,12 +7,9 @@ namespace Componenta\Cycle\App\Console;
 use Componenta\Cycle\App\Locator\EmbeddingLocator;
 use Componenta\Cycle\App\Locator\EntityLocator;
 use Componenta\Cycle\ConfigKey;
-use Componenta\Cycle\Mapper\LazyGhostMapper;
+use Componenta\Cycle\App\SchemaCompiler;
 use Componenta\VarExport\VarExport;
-use Cycle\Annotated;
 use Cycle\Database\DatabaseProviderInterface;
-use Cycle\ORM\SchemaInterface;
-use Cycle\Schema;
 use ErrorException;
 use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -28,19 +25,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class GenerateSchemaCommand extends Command
 {
+    private readonly SchemaCompiler $compiler;
+
     public function __construct(
-        private readonly DatabaseProviderInterface $dbal,
+        DatabaseProviderInterface $dbal,
         private readonly EntityLocator $entityLocator,
         private readonly EmbeddingLocator $embeddingLocator,
     ) {
+        $this->compiler = new SchemaCompiler($dbal);
         parent::__construct();
-    }
-
-    private function createDefaults(): Schema\Defaults
-    {
-        return (new Schema\Defaults())->merge([
-            SchemaInterface::MAPPER => LazyGhostMapper::class,
-        ]);
     }
 
     protected function configure(): void
@@ -62,7 +55,7 @@ final class GenerateSchemaCommand extends Command
         $io->title('Generate ORM Schema');
         $io->text('Analyzing entity definitions...');
 
-        $schema = $this->compileSchema();
+        $schema = $this->compiler->compile($this->entityLocator, $this->embeddingLocator);
 
         $outputPath = $input->getOption('output');
         $this->writeSchema($schema, $outputPath);
@@ -77,29 +70,6 @@ final class GenerateSchemaCommand extends Command
         }
 
         return Command::SUCCESS;
-    }
-
-    private function compileSchema(): array
-    {
-        return (new Schema\Compiler())->compile(
-            new Schema\Registry($this->dbal, $this->createDefaults()),
-            [
-                new Annotated\Embeddings($this->embeddingLocator),
-                new Annotated\Entities($this->entityLocator),
-                new Annotated\TableInheritance(),
-                new Annotated\MergeColumns(),
-                new Schema\Generator\ResetTables(),
-                new Schema\Generator\GenerateRelations(),
-                new Schema\Generator\GenerateModifiers(),
-                new Schema\Generator\ValidateEntities(),
-                new Schema\Generator\RenderTables(),
-                new Schema\Generator\RenderRelations(),
-                new Schema\Generator\RenderModifiers(),
-                new Schema\Generator\ForeignKeys(),
-                new Annotated\MergeIndexes(),
-                new Schema\Generator\GenerateTypecast(),
-            ],
-        );
     }
 
     private function writeSchema(array $schema, string $path): void
