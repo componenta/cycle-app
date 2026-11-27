@@ -104,7 +104,11 @@ final class GenerateSchemaCommand extends Command
             }
             $temporary = null;
             if (function_exists('opcache_invalidate')) {
-                opcache_invalidate($path, true);
+                try {
+                    opcache_invalidate($path, true);
+                } catch (ErrorException) {
+                    // A restricted OPcache API does not make a completed publication fail.
+                }
             }
         } finally {
             try {

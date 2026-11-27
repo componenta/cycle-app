@@ -110,6 +110,50 @@ it('reports a failed schema write and cleans up unpublished files', function ():
     }
 });
 
+it('reports successful schema publication when the OPcache API is restricted', function (): void {
+    if (!extension_loaded('Zend OPcache')) {
+        test()->markTestSkipped('Requires OPcache.');
+    }
+    $directory = sys_get_temp_dir() . '/componenta-schema-restricted-opcache-' . bin2hex(random_bytes(10));
+
+    try {
+        $process = proc_open([
+            PHP_BINARY, '-d', 'opcache.enable=1', '-d', 'opcache.enable_cli=1',
+            '-d', 'opcache.file_update_protection=0', '-d', 'opcache.restrict_api=' . $directory . '/unavailable-api',
+            __DIR__ . '/Fixtures/restricted-opcache-schema.php',
+            dirname(__DIR__) . '/vendor/autoload.php', $directory,
+        ], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        expect(is_resource($process))->toBeTrue();
+        $output = stream_get_contents($pipes[1]);
+        $errors = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        expect(proc_close($process))->toBe(0, $errors)
+            ->and($errors)->toBe('')
+            ->and(json_decode($output, true, flags: JSON_THROW_ON_ERROR))->toBe([
+                'opcacheEnabled' => true,
+                'restrictionActive' => true,
+                'firstStatus' => Command::SUCCESS,
+                'firstConfig' => [ConfigKey::ROOT => [ConfigKey::SCHEMA => []]],
+                'secondStatus' => Command::SUCCESS,
+                'secondConfig' => [ConfigKey::ROOT => [ConfigKey::SCHEMA => []]],
+                'replacementWritten' => true,
+                'handlerRestored' => true,
+                'files' => ['.', '..', 'schema.php'],
+            ]);
+    } finally {
+        if (is_dir($directory)) {
+            foreach (scandir($directory) as $name) {
+                if ($name !== '.' && $name !== '..') {
+                    unlink($directory . '/' . $name);
+                }
+            }
+            rmdir($directory);
+        }
+    }
+});
+
 it('retains the previous schema when writing the replacement stops partway through', function (): void {
     $directory = sys_get_temp_dir() . '/componenta-schema-partial-' . bin2hex(random_bytes(10));
     mkdir($directory);
