@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: componenta/cycle
-          ref: cba51e39a907de2890bfe5e6400a8216dc171cc7
+          ref: 7cc0c421a19202f7437b65ef9ca19e2fc618f007
           path: cycle-source
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
